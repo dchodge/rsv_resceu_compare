@@ -1,0 +1,404 @@
+---
+title: "rsv_inter_ew"
+author: "David Hodgson"
+date: "24/09/2020"
+output: html_document
+---
+
+
+# 1. Setup 
+# 1.1 Import libraries
+May need to downoad all of these (use install.packages)
+```{r libraries}
+
+library(Rcpp)       # For c++ intergration
+library(RcppEigen)  # Ditto
+library(coda)       # Ditto
+library(tidyverse)
+library(parallel)
+library(MASS)
+library(foreach)
+library(gridExtra)
+library(doParallel)
+library(BayesianTools)
+library(devtools)
+library(here)
+library(patchwork)
+source( here("R", "gen_data", "helpers.R")) #ensure c++14 is enabled
+
+```
+
+
+## 2 Import data for the epidemic model intervention model
+### 2.1 RunIntervention class
+
+This section calls a class from the cpp module inteface (RunInterventions.cpp) for the cpp intervention model (defined in RunInterventions.h).
+Then, using demographic data from the UK (ukdata) and model data needed for the intervention programmes (data_inter_uk), the intervention model class is initialised and ready to use! 
+
+```{r}
+
+sourceCpp(here("src", "RunInterventions.cpp")) # Uploads empty RunInterventions class
+source(here("R", "RunInterventionsClass.R")) # Uploads emmake_RunInterventionspty function
+burnin_yrs <- 2
+run_yrs <- 5
+
+# Load premade datasets
+load(file = here::here("data", "inputs", "rsv_data_resceu.RData")) # loads resceudata
+load(file = here::here("data", "inputs", "inter_data_uk.RData")) # loads data_inter_uk
+
+classRunInterventions <- make_RunInterventions(RunInterventions, resceudata, data_inter_uk, 30 * 12 + 1, 30 * 12 * 10)
+
+```
+
+# 3. Code to run custom RSV intervention programmes
+
+Three examples of how to implement your own custom calendars are given below. 
+
+```{r}
+
+# Load relevant R scripts
+source("R/vac_cal.R") # generates the vaccination calendars
+source("R/calc_outcomes.R")  # calculate the outcomessource
+source("R/cal_risks.R")  # calculate the outcomes
+
+# Load posteriors
+load(here("data", "posteriors_resceu_alt.RData"))  # posteriors from fitting in previous RMarkdown
+# Load seeds
+seeds <- read.csv(here("data", "inputs", "seed_samples.csv"), header = FALSE)[, 1] + 1
+
+#fit_vals_beta(c(0.2, 0.44, 0.62)) # mat efficacy (infants)
+#fit_vals_beta(c(0.2, 0.44, 0.62)) # mat efficacy (infants)
+#fit_vals_beta(c(0.519, 0.784, 0.903)) # mab efficacy
+#fit_vals_beta(c(0.05, 0.39, 0.64)) # lav efficacy
+
+ind_pal <- c(rep(1, 9), rep(0, 16)) # VHR (<8 months)
+ind_mabs <- c(rep(1, 1), rep(0, 24)) # Birth only (0 months only)
+mat_eff <- rbeta(1250,   8.333082, 11.650052) # efficacy of materal antibodies
+mab_eff <- rbeta(1250, 12.462339,  4.079271) # efficacy of long-acting mabs
+lav_eff <- rbeta(1250, 3.24646, 5.997432) # efficacy of long acting monoclonal antibodies
+
+ind_parents <- c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1.0,1.0,1.0,0,0,0,0) # 15-44 (parents)
+u6mo <- c(1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1.0,1.0,1.0,0,0,0,0) # 15-44 (parents)
+
+# VHR, HR and LR at birth during the winter
+
+```
+
+## Comparator
+```{r}
+
+source("R/vac_cal.R") # generates the vaccination calendars
+source("R/calc_outcomes.R")  # calculate the outcomessource
+source("R/cal_risks.R")  # calculate the outcomes
+source("R/cea.R")
+
+
+xi_days_boost <- 90
+vac_par_info <- list(om_mab = 1 / 150, direct = FALSE, xi_boost = 60 / xi_days_boost)
+
+make_vac_program_info_custom_None <- function(seed) {
+  list(
+
+    )
+}
+
+outputNone <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.0, output1[[1]][[1]], 0, 0.03, 1)
+cal_risks(outputNone, resceudata)
+
+outputNoneHigh <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.0, output1[[1]][[1]], 0, 0.03, 1.5)
+outputNoneLow<- run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.0, output1[[1]][[1]], 0, 0.03, 0.5)
+
+
+save(outputNone, file = here::here("outputs", "burden_full", "none.RData") )
+save(outputNoneLow, file = here::here("outputs", "burden_full", "none_low.RData") )
+save(outputNoneHigh, file = here::here("outputs", "burden_full", "none_high.RData") )
+
+none_final <- save_outputs(outputNone, "no_inter")
+save_excel(none_final, "burden_no_inter")
+
+none_final_low <- save_outputs(outputNoneLow, "no_inter_low")
+none_final_high <- save_outputs(outputNoneHigh, "no_inter_high")
+
+```
+
+## Maternal vaccination stuff
+
+```{r}
+
+vac_par_info <- list(om_mab = 1 / 150, direct = FALSE, xi_boost = 60 / xi_days_boost)
+
+make_vac_program_info_custom_none_mat <- function(seed) {
+  list(
+      mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 52, eff_inf = 0.39, eff_mat = lav_eff[seed], cov = 0.0)
+    )
+}
+
+make_vac_program_info_custom_Base <- function(seed) {
+  list(
+      mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 52, eff_inf = 0.39, eff_mat = lav_eff[seed], cov = 0.67)
+    )
+}
+
+make_vac_program_info_custom_P1 <- function(seed) {
+  list(
+      mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 21 + 1, eff_inf = 0.39, eff_mat = lav_eff[seed], cov = 0.44)
+    )
+}
+
+make_vac_program_info_custom_P3 <- function(seed) {
+  list(
+      mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 21 + 1, eff_inf = 0.39, eff_mat = lav_eff[seed], cov = 0.30)
+    )
+}
+
+# Ex.2a Long-acting monoclonal antibodies at HR, LR, and VHR, given seasonally (Oct to April) at birh ONLY with 98% coverage (cannot include manual duration of protection) PLUS
+# Ex.2b Maternal vaccination given seasonally (July to Jan to prevent infections in Oct to April) with 70% coverage. Average duration of protection is 150 days.
+# VHR, HR and LR at birth during the winter
+#vac_program_info_custom <- make_vac_program_info_custom_P8(1)
+#vac_cal <- create_calendar(vac_program_info_custom, "week", 0.6)
+
+make_vac_program_info_custom_P4 <- function(seed) {
+  list(
+      mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 21 + 1, eff_inf = 0.39, eff_mat = lav_eff[seed], cov = 0.70)
+    )
+}
+
+make_vac_program_info_custom_P5 <- function(seed) {
+  list(
+      mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 52, eff_inf = 0.05, eff_mat = lav_eff[seed], cov = 0.67)
+    )
+}
+
+make_vac_program_info_custom_P6 <- function(seed) {
+  list(
+      mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 52, eff_inf = 0.6, eff_mat = lav_eff[seed], cov = 0.67)
+    )
+}
+
+make_vac_program_info_custom_P7 <- function(seed) {
+  list(
+      mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 52, eff_inf = mat_eff[seed], eff_mat = lav_eff[seed], cov = 0.67)
+    )
+}
+
+none_mat <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_none_mat, vac_par_info, 0.0, output1[[1]][[1]], 0, 0.03, 1)
+outputBase_mat <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_Base, vac_par_info, 0.67, output1[[1]][[1]], 200000, 0.03, 1)
+outputP1_mat  <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P1, vac_par_info, 0.44, output1[[1]][[1]], 100000, 0.03, 1)
+outputP3_mat  <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P3, vac_par_info, 0.30, output1[[1]][[1]], 100000, 0.03, 1)
+outputP4_mat  <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P4, vac_par_info, 0.70, output1[[1]][[1]], 100000, 0.03, 1)
+outputP5_mat  <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P5, vac_par_info, 0.67, output1[[1]][[1]], 200000, 0.03, 1)
+outputP6_mat  <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P6, vac_par_info, 0.67, output1[[1]][[1]], 200000, 0.03, 1)
+vac_par_info <- list(om_mab = 1 / 150, direct = FALSE, xi_boost = 60 / 60)
+outputP7_mat  <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_Base, vac_par_info, 0.67, output1[[1]][[1]], 200000, 0.03, 1)
+vac_par_info <- list(om_mab = 1 / 150, direct = FALSE, xi_boost = 60 / 180)
+outputP8_mat  <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_Base, vac_par_info, 0.67, output1[[1]][[1]], 200000, 0.03, 1)
+vac_par_info <- list(om_mab = 1 / 150, direct = FALSE, xi_boost = 60 / xi_days_boost)
+outputP9_mat  <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_Base, vac_par_info, 0.67, output1[[1]][[1]], 200000, 0.03, 1.5)
+outputP10_mat  <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_Base, vac_par_info, 0.67, output1[[1]][[1]], 200000, 0.03, 0.5)
+
+
+save(outputBase_mat, file = here::here("outputs", "burden_full", "Base_mat.RData") )
+save(outputP1_mat, file = here::here("outputs", "burden_full", "P1_mat.RData") )
+save(outputP3_mat, file = here::here("outputs", "burden_full", "P3_mat.RData") )
+save(outputP4_mat, file = here::here("outputs", "burden_full", "P4_mat.RData") )
+save(outputP5_mat, file = here::here("outputs", "burden_full", "P5_mat.RData") )
+save(outputP6_mat, file = here::here("outputs", "burden_full", "P6_mat.RData") )
+save(outputP7_mat, file = here::here("outputs", "burden_full", "P7_mat.RData") )
+save(outputP8_mat, file = here::here("outputs", "burden_full", "P8_mat.RData") )
+save(outputP9_mat, file = here::here("outputs", "burden_full", "P9_mat.RData") )
+save(outputP10_mat, file = here::here("outputs", "burden_full", "P10_mat.RData") )
+
+```
+
+
+## MABs vaccination stuff
+
+```{r}
+
+
+make_vac_program_info_custom_Base <- function(seed) {
+  list(
+      mAB_VHR = list(id = TRUE, age_id = ind_pal, t_start = 1, t_end = 52, eff = 0.701, cov = 0.94),
+      mAB_HR =  list(id = TRUE, catchup = FALSE, age_id = ind_mabs, t_start = 1, t_end =  52, eff = 0.701, cov = 0.94),
+      mAB_LR =  list(id = TRUE, catchup = FALSE, age_id = ind_mabs, t_start = 1, t_end =  52, eff = 0.701, cov = 0.94)
+    )
+}
+
+make_vac_program_info_custom_P1 <- function(seed) {
+  list(
+      mAB_VHR = list(id = TRUE, age_id = ind_pal, t_start = 14, t_end = 14 + 30, eff = 0.701, cov = 0.94),
+      mAB_HR =  list(id = TRUE, catchup = FALSE, age_id = ind_mabs, t_start = 14, t_end =  14 + 30, eff = 0.701, cov = 0.94),
+      mAB_LR =  list(id = TRUE, catchup = FALSE, age_id = ind_mabs, t_start = 14, t_end =  14 + 30, eff = 0.701, cov = 0.94)
+    )
+}
+
+make_vac_program_info_custom_P2 <- function(seed) {
+  list(
+      mAB_VHR = list(id = TRUE, age_id = ind_pal, t_start = 14, t_end = 14 + 30, eff = 0.701, cov = 0.94),
+      mAB_HR =  list(id = TRUE, catchup = TRUE, age_id_catchup = u6mo, age_id = ind_mabs, t_start = 14, t_end =  14 + 30, eff = 0.701, cov = 0.94),
+      mAB_LR =  list(id = TRUE, catchup = TRUE, age_id_catchup = u6mo, age_id = ind_mabs, t_start = 14, t_end =  14 + 30, eff = 0.701, cov = 0.94)
+    )
+}
+
+# Ex.1a Long-acting monoclonal antibodies at HR, LR, and VHR, given seasonally (Oct to April) at birh ONLY with 43% coverage (cannot include manual duration of protection) PLUS
+# Ex.1b Maternal vaccination given seasonally (July to Jan to prevent infections in Oct to April) with 31% coverage. Average duration of protection is 150 days.
+
+make_vac_program_info_custom_P3 <- function(seed) {
+  list(
+      mAB_VHR = list(id = TRUE, age_id = ind_pal, t_start = 14, t_end = 14 + 30, eff = 0.701, cov = 0.30),
+      mAB_HR =  list(id = TRUE, catchup = FALSE, age_id = ind_mabs, t_start = 14, t_end =  14 + 30, eff = 0.701, cov = 0.30),
+      mAB_LR =  list(id = TRUE, catchup = FALSE, age_id = ind_mabs, t_start = 14, t_end =  14 + 30, eff = 0.701, cov = 0.30)
+    )
+}
+
+# Ex.2a Long-acting monoclonal antibodies at HR, LR, and VHR, given seasonally (Oct to April) at birh ONLY with 98% coverage (cannot include manual duration of protection) PLUS
+# Ex.2b Maternal vaccination given seasonally (July to Jan to prevent infections in Oct to April) with 70% coverage. Average duration of protection is 150 days.
+# VHR, HR and LR at birth during the winter
+#vac_program_info_custom <- make_vac_program_info_custom_P8(1)
+#vac_cal <- create_calendar(vac_program_info_custom, "week", 0.6)
+
+make_vac_program_info_custom_P4 <- function(seed) {
+  list(
+      mAB_VHR = list(id = TRUE, age_id = ind_pal, t_start = 14, t_end = 14 + 30, eff = 0.701, cov = 0.70),
+      mAB_HR =  list(id = TRUE, catchup = FALSE, age_id = ind_mabs, t_start = 14, t_end =  14 + 30, eff = 0.701, cov = 0.70),
+      mAB_LR =  list(id = TRUE, catchup = FALSE, age_id = ind_mabs, t_start = 14, t_end =  14 + 30, eff = 0.701, cov = 0.70)
+    )
+}
+
+make_vac_program_info_custom_P5 <- function(seed) {
+  list(
+      mAB_VHR = list(id = TRUE, age_id = ind_pal, t_start = 1, t_end = 52, eff = 0.52, cov = 0.94),
+      mAB_HR =  list(id = TRUE, catchup = FALSE, age_id = ind_mabs, t_start = 1, t_end =  52, eff = 0.52, cov = 0.94),
+      mAB_LR =  list(id = TRUE, catchup = FALSE, age_id = ind_mabs, t_start = 1, t_end =  52, eff = 0.52, cov = 0.94)
+    )
+}
+
+make_vac_program_info_custom_P6 <- function(seed) {
+  list(
+      mAB_VHR = list(id = TRUE, age_id = ind_pal, t_start = 1, t_end = 52, eff = 0.812, cov = 0.94),
+      mAB_HR =  list(id = TRUE, catchup = FALSE, age_id = ind_mabs, t_start = 1, t_end =  52, eff = 0.812, cov = 0.94),
+      mAB_LR =  list(id = TRUE, catchup = FALSE, age_id = ind_mabs, t_start = 1, t_end =  52, eff = 0.812, cov = 0.94)
+    )
+}
+
+outputBase_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_Base, vac_par_info, 0.0, output1[[1]][[1]], 200000, 0.03, 1)
+outputP1_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P1, vac_par_info, 0.0, output1[[1]][[1]], 100000, 0.03, 1)
+outputP2_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P2, vac_par_info, 0.0, output1[[1]][[1]], 100000, 0.03, 1)
+outputP3_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P3, vac_par_info, 0.0, output1[[1]][[1]], 100000, 0.03, 1)
+outputP4_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P4, vac_par_info, 0.0, output1[[1]][[1]], 100000, 0.03, 1)
+outputP5_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P5, vac_par_info, 0.0, output1[[1]][[1]], 200000, 0.03, 1)
+outputP6_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P6, vac_par_info, 0.0, output1[[1]][[1]], 200000, 0.03, 1)
+vac_par_info <- list(om_mab = 1 / 120, direct = FALSE, xi_boost = 60 / xi_days_boost)
+outputP7_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_Base, vac_par_info, 0.0, output1[[1]][[1]], 200000, 0.03, 1)
+vac_par_info <- list(om_mab = 1 / 240, direct = FALSE, xi_boost = 60 / xi_days_boost)
+outputP8_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_Base, vac_par_info, 0.0, output1[[1]][[1]], 200000, 0.03, 1)
+vac_par_info <- list(om_mab = 1 / 150, direct = FALSE, xi_boost = 60 / xi_days_boost)
+outputP9_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_Base, vac_par_info, 0.0, output1[[1]][[1]], 200000, 0.03, 1.5)
+outputP10_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_Base, vac_par_info, 0.0, output1[[1]][[1]], 200000, 0.03, 0.5)
+
+
+save(outputBase_mab, file = here::here("outputs", "burden_full", "Base_mab.RData") )
+save(outputP1_mab, file = here::here("outputs", "burden_full", "P1_mab.RData") )
+save(outputP2_mab, file = here::here("outputs", "burden_full", "P2_mab.RData") )
+save(outputP3_mab, file = here::here("outputs", "burden_full", "P3_mab.RData") )
+save(outputP4_mab, file = here::here("outputs", "burden_full", "P4_mab.RData") )
+save(outputP5_mab, file = here::here("outputs", "burden_full", "P5_mab.RData") )
+save(outputP6_mab, file = here::here("outputs", "burden_full", "P6_mab.RData") )
+save(outputP7_mab, file = here::here("outputs", "burden_full", "P7_mab.RData") )
+save(outputP8_mab, file = here::here("outputs", "burden_full", "P8_mab.RData") )
+save(outputP9_mab, file = here::here("outputs", "burden_full", "P9_mab.RData") )
+save(outputP10_mab, file = here::here("outputs", "burden_full", "P10_mab.RData") )
+
+```
+
+# Calculate the impact of the 11 different programmes 
+## Mabs
+
+```{r}
+
+source(here::here("R/cea.R"))
+
+# Run and save all for excel file
+load(file = here::here("outputs", "burden_full", "none.RData") )
+load(file = here::here("outputs", "burden_full", "none_high.RData") )
+load(file = here::here("outputs", "burden_full", "none_low.RData") )
+
+load(file = here::here("outputs", "burden_full", "Base_mab.RData") )
+load(file = here::here("outputs", "burden_full", "P1_mab.RData") )
+load(file = here::here("outputs", "burden_full", "P2_mab.RData") )
+load(file = here::here("outputs", "burden_full", "P3_mab.RData") )
+load(file = here::here("outputs", "burden_full", "P4_mab.RData") )
+load(file = here::here("outputs", "burden_full", "P5_mab.RData") )
+load(file = here::here("outputs", "burden_full", "P6_mab.RData") )
+load(file = here::here("outputs", "burden_full", "P7_mab.RData") )
+load(file = here::here("outputs", "burden_full", "P8_mab.RData") )
+load(file = here::here("outputs", "burden_full", "P9_mab.RData") )
+load(file = here::here("outputs", "burden_full", "P10_mab.RData") )
+
+none_final <- save_outputs(outputNone, "no_inter")
+base_mab_short <- save_outputs(outputBase_mab, "base_case_mab_short")
+P1_mab_short <- save_outputs(outputP1_mab, "P1_case_mab_short")
+P2_mab_short <- save_outputs(outputP2_mab, "P2_case_mab_short")
+P3_mab_short <- save_outputs(outputP3_mab, "P3_case_mab_short")
+P4_mab_short <- save_outputs(outputP4_mab, "P4_case_mab_short")
+P5_mab_short <- save_outputs(outputP5_mab, "P5_case_mab_short")
+P6_mab_short <- save_outputs(outputP6_mab, "P6_case_mab_short")
+P7_mab_short <- save_outputs(outputP7_mab, "P7_case_mab_short")
+P8_mab_short <- save_outputs(outputP8_mab, "P8_case_mab_short")
+P9_mab_short <- save_outputs(outputP9_mab, "P9_case_mab_short")
+P10_mab_short <- save_outputs(outputP10_mab, "P10_case_mab_short")
+
+calc_impact(none_final, base_mab_short, "base_mab")
+calc_impact(none_final, P1_mab_short, "P1_mab")
+calc_impact(none_final, P2_mab_short, "P2_mab")
+calc_impact(none_final, P3_mab_short, "P3_mab")
+calc_impact(none_final, P4_mab_short, "P4_mab")
+calc_impact(none_final, P5_mab_short, "P5_mab")
+calc_impact(none_final, P6_mab_short, "P6_mab")
+calc_impact(none_final, P7_mab_short, "P7_mab")
+calc_impact(none_final, P8_mab_short, "P8_mab")
+calc_impact(none_final_high, P9_mab_short, "P9_mab")
+calc_impact(none_final_low, P10_mab_short, "P10_mab")
+```
+
+## Mats
+
+```{r}
+
+# Run and save all for excel file
+load(file = here::here("outputs", "burden_full", "none.RData") )
+load(file = here::here("outputs", "burden_full", "Base_mat.RData") )
+load(file = here::here("outputs", "burden_full", "P1_mat.RData") )
+load(file = here::here("outputs", "burden_full", "P3_mat.RData") )
+load(file = here::here("outputs", "burden_full", "P4_mat.RData") )
+load(file = here::here("outputs", "burden_full", "P5_mat.RData") )
+load(file = here::here("outputs", "burden_full", "P6_mat.RData") )
+load(file = here::here("outputs", "burden_full", "P7_mat.RData") )
+load(file = here::here("outputs", "burden_full", "P8_mat.RData") )
+load(file = here::here("outputs", "burden_full", "P9_mat.RData") )
+load(file = here::here("outputs", "burden_full", "P10_mat.RData") )
+
+none_final <- save_outputs(outputNone, "no_inter")
+base_mat_short <- save_outputs(outputBase_mat, "base_case_mat_short")
+P1_mat_short <- save_outputs(outputP1_mat, "P1_case_mat_short")
+P3_mat_short <- save_outputs(outputP3_mat, "P3_case_mat_short")
+P4_mat_short <- save_outputs(outputP4_mat, "P4_case_mat_short")
+P5_mat_short <- save_outputs(outputP5_mat, "P5_case_mat_short")
+P6_mat_short <- save_outputs(outputP6_mat, "P6_case_mat_short")
+P7_mat_short <- save_outputs(outputP7_mat, "P7_case_mat_short")
+P8_mat_short <- save_outputs(outputP8_mat, "P8_case_mat_short")
+P9_mat_short <- save_outputs(outputP9_mat, "P9_case_mat_short")
+P10_mat_short <- save_outputs(outputP10_mat, "P10_case_mat_short")
+
+calc_impact(none_final, base_mat_short, "base_mat")
+calc_impact(none_final, P1_mat_short, "P1_mat")
+calc_impact(none_final, P3_mat_short, "P3_mat")
+calc_impact(none_final, P4_mat_short, "P4_mat")
+calc_impact(none_final, P5_mat_short, "P5_mat")
+calc_impact(none_final, P6_mat_short, "P6_mat")
+calc_impact(none_final, P7_mat_short, "P7_mat")
+calc_impact(none_final, P8_mat_short, "P8_mat")
+calc_impact(none_final_high, P9_mat_short, "P9_mat")
+calc_impact(none_final_low, P10_mat_short, "P10_mat")
+
+```

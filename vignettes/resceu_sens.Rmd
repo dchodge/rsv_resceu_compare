@@ -1,0 +1,309 @@
+---
+title: "rsv_inter_ew"
+author: "David Hodgson"
+date: "24/09/2020"
+output: html_document
+---
+
+
+# 1. Setup 
+# 1.1 Import libraries
+May need to downoad all of these (use install.packages)
+```{r libraries}
+
+library(Rcpp)       # For c++ intergration
+library(RcppEigen)  # Ditto
+library(coda)       # Ditto
+library(tidyverse)
+library(parallel)
+library(MASS)
+library(foreach)
+library(gridExtra)
+library(doParallel)
+library(BayesianTools)
+library(devtools)
+library(here)
+library(patchwork)
+source( here("R", "gen_data", "helpers.R")) #ensure c++14 is enabled
+
+```
+
+# Load info from previous runs 
+
+```{r}
+
+load(here("outputs", "burden_full", "none.RData")) # outputNone
+load(here("outputs", "burden_full", "Base_mab.RData")) # outputBase_mab
+load(here("outputs", "burden_full", "Base_mat.RData")) # outputBase_mat
+
+```
+
+# Check everything matches the outputs in the excel file
+
+```{r}
+
+get_summarise_outputs <- function(output, sens_list) {
+    outcomes_str_long <- c("nonhealthcare_seeking_symptomatic_cases", "pri_cases", "sec_cases", "hosp_cases", "picu_cases", "death_cases")
+    outcomes_str <- c("symp_nhc", "pri", "sec", "hosp", "icu", "death")
+    outcomes_tot <- outcomes_str_long %>% map(
+        ~output$outcomes_month_age %>% 
+            filter(outcome == .x, age_group < 17) %>%
+            group_by(time, age_group) %>% 
+            summarise(incidence = mean(incidence, na.rm = TRUE)) %>% 
+            ungroup %>% 
+            summarise(incidence = sum(incidence) * 10) %>% .[[1]]
+    ) %>% setNames(outcomes_str) %>% unlist
+
+    # Sens stuff
+    outcomes_tot["hosp"] <- outcomes_tot[["hosp"]] * sens_list[["hosp_rate"]]
+    outcomes_tot["death"] <- outcomes_tot[["death"]] * sens_list[["death_rate"]]
+    outcomes_tot["sec"] <- outcomes_tot[["sec"]] * sens_list[["sec_rate"]]
+    outcomes_tot["icu"] <- outcomes_tot[["icu"]] * sens_list[["icu_rate"]]
+    outcomes_tot
+}
+
+# Functions to get ICER
+# get cost of treatment
+get_cost_treat <- function(incidence, sens_list) {
+    outcomes_tot_treat <- incidence[c("pri", "sec", "hosp", "icu")]
+    # Treatment
+    cost_day <- c("pri" =  sens_list[["cost_pri"]], "sec" = sens_list[["cost_sec"]], "hosp" = sens_list[["cost_admission_hosp"]], "icu" = 2015)
+    len_day <- c("pri" = 1, "sec" = 1, "hosp" = sens_list[["days_hospital"]], "icu" = sens_list[["day_ICU"]])
+    fixed <- c("pri" = 0, "sec" = 0, "hosp" = 0, "icu" = 613)
+    (((len_day * cost_day + fixed) * outcomes_tot_treat) %>% sum) * 1 #0.862 # 112145615 (112132662.9)
+    # 0.862 is average discounting
+}
+
+# get indirect costs
+get_cost_indirect <- function(incidence, sens_list) {
+    # Cost of indirect non-medical costs
+    outcomes_tot_indirect <- incidence[c("sec", "hosp", "icu")]  
+
+    # Get cost for time off and transport
+    cost_day <- c("sec" = sens_list[["cost_work_day"]], "hosp" = sens_list[["cost_work_day"]], "icu" = sens_list[["cost_work_day"]])
+    len_day <- c("sec" =  sens_list[["sick_days"]], "hosp" = 5.8, "icu" = 8.1)
+    fixed_day <- c("sec" = 0, "hosp" = 189 * 0.19, "icu" = 189 * 0.19)
+
+    (((len_day * cost_day + fixed_day) * outcomes_tot_indirect) %>% sum) * 1#0.861 # 24094073 (24091337.51)
+}
+
+# get intervention costs
+get_cost_inter <- function(doses_w, sens_list, base) {
+    doses <- list(
+        "pal" = doses_w[, seq(1, 100, 4)],
+        "mab" = doses_w[, seq(2, 100, 4)],
+        "lav" = doses_w[, seq(3, 100, 4)],
+        "mat" = doses_w[, seq(4, 100, 4)]
+    )
+
+    cost_administration <- c("pal" = 51.82 * 5.08 * sens_list[["cost_delivery_prop"]], "mab" = 8.32 * sens_list[["cost_delivery_prop"]], "lav" = 11.36 * sens_list[["cost_delivery_prop"]], "mat" = 5 * sens_list[["cost_delivery_prop"]])
+    cost_purchase <- c("pal" = 928.6 * 5.08, "mab" = sens_list[["mab_cost"]], "lav" = 60, "mat" = sens_list[["mat_cost"]])
+    inter_cost <- (names(cost_administration) %>% map(~sum(doses[[.x]])  * (cost_purchase[[.x]] + cost_administration[[.x]])) %>% unlist %>% sum) * 1 
+    if(!base) { 
+        inter_cost <- inter_cost + sens_list[["implementation_costs"]] #0.865
+    }
+    inter_cost
+}
+
+get_QALY_sens <- function(incidence, sens_list) {
+
+    outcomes_tot_qaly <- c(
+        "nh" = incidence["symp_nhc"],
+        "h" = incidence["pri"] + incidence["sec"] + incidence["hosp"],
+        "death" = incidence["death"]
+    )
+    qaly_loss <- c("nh" = 0.003024, "h" = sens_list[["qaly_loss_hs"]], "death" = 32)
+    ((outcomes_tot_qaly * qaly_loss) %>% sum) * 1 # 0.8619119 
+}
+
+
+get_qaly_cost <- function(output, sens_list, base) {
+    incidence <- get_summarise_outputs(output, sens_list)
+    list(
+        cost_tot = get_cost_treat(incidence, sens_list) + get_cost_indirect(incidence, sens_list) + get_cost_inter(output$vac_cal, sens_list, base),
+        qaly = get_QALY_sens(incidence, sens_list)
+    )
+}
+
+get_icer <- function(output_1, output_2, sens_list) {
+    metric1 <- get_qaly_cost(output_1, sens_list, base = TRUE)
+    metric2 <- get_qaly_cost(output_2, sens_list, base = FALSE)
+    (metric1$cost_tot - metric2$cost_tot) / ( metric2$qaly - metric1$qaly)
+}
+
+get_mat_mab_icer <- function(outputNone, outputBase_mat, outputBase_mab, sens_list) {
+    base_mat <- get_icer(outputNone, outputBase_mat, sens_list) * 0.9940513 # scalar to link undiscounted and discounted ICER
+    base_mab <- get_icer(outputNone, outputBase_mab, sens_list) * 1.005149 # scalar to link undiscounted and discounted ICER
+    c(base_mat, base_mab)
+}
+
+make_row <- function(base, SX_lower, SX_upper) {
+    c("mat_base" = base[1], "mat_lower" = SX_lower[1], "mat_uper" = SX_upper[1], "mab_base" = base[2], "mab_lower" = SX_lower[2], "mab_lower" = SX_upper[2])
+}
+```
+
+Sensitivity analysis 
+
+```{r}
+
+sens_list_default <- list(  
+    # Rates
+    hosp_rate = 1,
+    sec_rate = 1,
+    death_rate = 1,
+    icu_rate = 1,
+    # Costs
+    cost_admission_hosp = 627,
+    days_hospital = 5.8,
+    day_ICU = 8.1,
+    cost_pri = 33,
+    cost_sec = 104,
+    cost_delivery_prop = 1,
+    cost_work_day = 139,
+    sick_days = 1,
+    qaly_loss_hs = 0.003823,
+    mab_cost = 50,
+    mat_cost = 37.5,
+    implementation_costs = 200000
+)
+
+base <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list_default)
+
+sens_list <- sens_list_default
+
+# S1 Hosp rate
+sens_list[["hosp_rate"]] <- 0.9
+S1_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["hosp_rate"]] <- 1.1
+S1_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S1 <- make_row(base, S1_lower, S1_upper)
+sens_list <- sens_list_default
+
+# S2 sec rate
+sens_list[["sec_rate"]] <- 0.9
+S2_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["sec_rate"]] <- 1.1
+S2_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S2 <- make_row(base, S2_lower, S2_upper)
+sens_list <- sens_list_default
+
+# S3 sec rate
+sens_list[["death_rate"]] <- 0.9
+S3_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["death_rate"]] <- 1.1
+S3_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S3 <- make_row(base, S3_lower, S3_upper)
+sens_list <- sens_list_default
+
+# S4 sec rate
+sens_list[["icu_rate"]] <- 0.9
+S4_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["icu_rate"]] <- 1.1
+S4_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S4 <- make_row(base, S4_lower, S4_upper)
+sens_list <- sens_list_default
+
+# S5 sec rate
+sens_list[["cost_admission_hosp"]] <- 627 * 0.8
+S5_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["cost_admission_hosp"]] <- 627 * 1.2
+S5_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S5 <- make_row(base, S5_lower, S5_upper)
+sens_list <- sens_list_default
+
+# S6 sec rate
+sens_list[["days_hospital"]] <- 1
+S6_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["days_hospital"]] <- 11
+S6_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S6 <- make_row(base, S6_lower, S6_upper)
+sens_list <- sens_list_default
+
+# S7 sec rate
+sens_list[["day_ICU"]] <- 4
+S7_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["day_ICU"]] <- 16
+S7_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S7 <- make_row(base, S7_lower, S7_upper)
+sens_list <- sens_list_default
+
+# S8 sec rate
+sens_list[["cost_pri"]] <- 33 * 0.8
+S8_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["cost_pri"]] <- 33 * 1.2
+S8_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S8 <- make_row(base, S8_lower, S8_upper)
+sens_list <- sens_list_default
+
+# S9 sec rate
+sens_list[["cost_sec"]] <- 104 * 0.8
+S9_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["cost_sec"]] <- 104 * 1.2
+S9_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S9 <- make_row(base, S9_lower, S9_upper)
+sens_list <- sens_list_default
+
+# S10 sec rate
+sens_list[["cost_delivery_prop"]] <- 0.8
+S10_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["cost_delivery_prop"]] <- 1.2
+S10_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S10 <- make_row(base, S10_lower, S10_upper)
+sens_list <- sens_list_default
+
+# S11 cost_work_day
+sens_list[["cost_work_day"]] <- 70
+S11_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["cost_work_day"]] <- 200
+S11_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S11 <- make_row(base, S11_lower, S11_upper)
+sens_list <- sens_list_default
+
+# S12 sick_days
+sens_list[["sick_days"]] <- 0.5
+S12_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["sick_days"]] <- 2
+S12_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S12 <- make_row(base, S12_lower, S12_upper)
+sens_list <- sens_list_default
+
+
+# S13 qalys
+sens_list[["qaly_loss_hs"]] <- 0.000492
+S13_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["qaly_loss_hs"]] <- 0.012766
+S13_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S13 <- make_row(base, S13_lower, S13_upper)
+sens_list <- sens_list_default
+
+
+# S14 mab_cost
+sens_list[["mab_cost"]] <- 30
+S14_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["mab_cost"]] <- 80
+S14_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S14 <- make_row(base, S14_lower, S14_upper)
+sens_list <- sens_list_default
+
+# S15 mat_cost
+sens_list[["mat_cost"]] <- 20
+S15_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["mat_cost"]] <- 60
+S15_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S15 <- make_row(base, S15_lower, S15_upper)
+sens_list <- sens_list_default
+
+# S16 mat_cost
+sens_list[["implementation_costs"]] <- 0
+S16_lower <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+sens_list[["implementation_costs"]] <- 300000
+S16_upper <- get_mat_mab_icer(outputNone, outputBase_mat, outputBase_mab, sens_list)
+S16 <- make_row(base, S16_lower, S16_upper)
+sens_list <- sens_list_default
+
+S <- rbind(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16) 
+save(S, file = here::here("outputs", "sens_analysis.Rdata"))
+write.csv(S, file = here::here("outputs", "sens_analysis.csv"))
+
+```
+

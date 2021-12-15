@@ -1,0 +1,113 @@
+---
+title: "rsv_inter_ew"
+author: "David Hodgson"
+date: "24/09/2020"
+output: html_document
+---
+
+
+# 1. Setup 
+# 1.1 Import libraries
+May need to downoad all of these (use install.packages)
+```{r libraries}
+
+library(Rcpp)       # For c++ intergration
+library(RcppEigen)  # Ditto
+library(coda)       # Ditto
+library(tidyverse)
+library(parallel)
+library(MASS)
+library(foreach)
+library(gridExtra)
+library(doParallel)
+library(BayesianTools)
+library(devtools)
+library(here)
+library(patchwork)
+source( here("R", "gen_data", "helpers.R")) #ensure c++14 is enabled
+
+```
+
+
+## 2 Import data for the epidemic model intervention model
+### 2.1 RunIntervention class
+
+This section calls a class from the cpp module inteface (RunInterventions.cpp) for the cpp intervention model (defined in RunInterventions.h).
+Then, using demographic data from the UK (ukdata) and model data needed for the intervention programmes (data_inter_uk), the intervention model class is initialised and ready to use! 
+
+```{r}
+
+
+# Load premade datasets
+load(file = here::here("data", "inputs", "rsv_data_resceu.RData")) # loads resceudata
+load(file = here::here("data", "inputs", "inter_data_uk.RData")) # loads data_inter_uk
+load(file = here::here("data", "inputs", "prior_data_resceu.RData"))   # Load in model data, including observation data (which is made up i.e. not the same as I used in the paper).
+
+sourceCpp(here("src", "RunInterventions.cpp")) # Uploads empty RunInterventions class
+source(here("R", "RunInterventionsClass.R")) # Uploads emmake_RunInterventionspty function
+classRunInterventions <- make_RunInterventions(RunInterventions, resceudata, data_inter_uk, 30 * 12 + 1, 30 * 12)
+
+
+sourceCpp(here("src", "logLikelihoodModule.cpp")) #ensure c++14 is enabled
+classEvaluateLogLikelihood <- new(EvaluateLogLikelihood, resceudata$numberDailyLiveBirths, resceudata$population, resceudata$ageGroupBoundary) # Calls class
+classEvaluateLogLikelihood$contactMatrixPhy <- t(resceudata$contactMatrixPhy)
+classEvaluateLogLikelihood$contactMatrixCon <- t(resceudata$contactMatrixCon)
+classEvaluateLogLikelihood$observedData <- as.matrix(resceudata$observationalData)
+classEvaluateLogLikelihood$lowerParamSupport <- priordata$fit.par$lowerParSupport
+classEvaluateLogLikelihood$upperParamSupport <- priordata$fit.par$upperParSupport
+classEvaluateLogLikelihood$run_start <- 0
+classEvaluateLogLikelihood$run_burn <- 0
+classEvaluateLogLikelihood$run_oneyr <- 30 * 12 + classEvaluateLogLikelihood$run_burn
+classEvaluateLogLikelihood$run_full <- 30 * 12 # number of days to fit the data and model to
+
+```
+
+# 3. Code to run custom RSV intervention programmes
+
+Three examples of how to implement your own custom calendars are given below. 
+
+```{r}
+
+source("R/vac_cal.R") # generates the vaccination calendars
+source("R/calc_outcomes.R")  # calculate the outcomes
+load(here("data", "posteriors_resceu.RData"))  # posteriors from fitting in previous RMarkdown
+post_sample <- output1[[1]][[1]][1, ]
+state_var_v1 <- classEvaluateLogLikelihood$getDebug(post_sample)
+
+make_vac_program_info_custom_P0 <- function(seed) {
+  list(
+      pal = list(id = TRUE, age_id = rep(0, 25), t_start = 14, t_end = 14 + 30, eff = 0.5, cov = 0.0)
+    )
+}
+
+func <- make_vac_program_info_custom_P0(1)
+
+vac_cal <- create_calendar(func, "week", 0)
+cal <- get_cal(vac_cal)
+dose <- get_dose(vac_cal)
+vac_par_info <- list(om_mab = 1 / 150, direct = FALSE, xi_boost = 1)
+
+state_var_v2 <- classRunInterventions$getDebug(cal, dose, vac_cal[["cov_c"]], vac_par_info, post_sample)
+
+compare_outputs(state_var_v1, state_var_v2, 300)
+
+```
+
+```{r}
+
+compare_outputs <- function(state_var_v1, state_var_v2, t) {
+  name <- c("M", "S1", "E1", "A1", "I1", "R1", "S2", "E2", "A2", "I2", "R2", "S3", "E3", "A3", "I3", "R3", "S4", "E4", "A4", "I4", "R4")
+  ll = 1:21 %>% map(~state_var_v1[t, ][seq(.x, 23*25, 23)]) %>% unlist
+  ri = lapply(1:21, function(y) (1:25 %>% map(~sum(state_var_v2[t, ][seq(y + 455*(.x - 1), 24*9 + 455*(.x - 1), 24)])) %>% unlist)) %>% unlist
+
+  data.frame( 
+    name = 1:21 %>% map(~rep(name[.x], 25)) %>% unlist,
+    ag = rep(1:25, 21),
+    ll = ll,
+    ri = ri
+  ) %>%
+  mutate(dif = ll - ri)
+}
+
+
+```
