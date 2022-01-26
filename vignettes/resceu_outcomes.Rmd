@@ -78,7 +78,7 @@ mab_eff <- rbeta(1250, 12.462339,  4.079271) # efficacy of long-acting mabs
 lav_eff <- rbeta(1250, 3.24646, 5.997432) # efficacy of long acting monoclonal antibodies
 
 ind_parents <- c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1.0,1.0,1.0,0,0,0,0) # 15-44 (parents)
-u6mo <- c(1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1.0,1.0,1.0,0,0,0,0) # 15-44 (parents)
+u6mo <- c(1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0) # 15-44 (parents)
 
 # VHR, HR and LR at birth during the winter
 
@@ -106,7 +106,7 @@ outputNone <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_None,
 cal_risks(outputNone, resceudata)
 
 outputNoneHigh <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.0, output1[[1]][[1]], 0, 0.03, 1.5)
-outputNoneLow<- run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.0, output1[[1]][[1]], 0, 0.03, 0.5)
+outputNoneLow - run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.0, output1[[1]][[1]], 0, 0.03, 0.5)
 
 
 save(outputNone, file = here::here("outputs", "burden_full", "none.RData") )
@@ -283,7 +283,7 @@ make_vac_program_info_custom_P6 <- function(seed) {
 
 outputBase_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_Base, vac_par_info, 0.0, output1[[1]][[1]], 200000, 0.03, 1)
 outputP1_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P1, vac_par_info, 0.0, output1[[1]][[1]], 100000, 0.03, 1)
-outputP2_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P2, vac_par_info, 0.0, output1[[1]][[1]], 100000, 0.03, 1)
+outputP2_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P2, vac_par_info, 0.0, output1[[1]][[1]], 200000, 0.03, 1)
 outputP3_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P3, vac_par_info, 0.0, output1[[1]][[1]], 100000, 0.03, 1)
 outputP4_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P4, vac_par_info, 0.0, output1[[1]][[1]], 100000, 0.03, 1)
 outputP5_mab <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_P5, vac_par_info, 0.0, output1[[1]][[1]], 200000, 0.03, 1)

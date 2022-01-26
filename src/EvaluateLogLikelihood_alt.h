@@ -535,7 +535,9 @@ public:
   void operator() (  vector< double >  &x , vector< double >  &dxdt , const double  t )
   {
       int t_d = (int)t%365;
+      
       beta = 1 + b1*(1 + exp(-((t_d/365.0 - phi))*((t_d/365.0 - phi))/(2*psi*psi)));
+
       vector<double > num_vec_wcba;
       double sum_wcb = 0.0;
       for(int j = 18; j < 21 ; j++)

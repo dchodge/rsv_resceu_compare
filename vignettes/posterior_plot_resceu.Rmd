@@ -198,6 +198,7 @@ ggplot() +
 ggsave(paste0(file.path, "/figs/inci_all.pdf"))
 
 ```
+
 ### 3.5 Plot the proportion of infants born with protection
 
 ```{r}

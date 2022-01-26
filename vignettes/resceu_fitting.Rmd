@@ -145,6 +145,9 @@ model <- list(
 
 ```
 
+
+First run
+
 ```{r}
 
 settingsPT <-  list(
@@ -170,6 +173,8 @@ save(output1, file = here("data", "posteriors_resceu_alt.RData"))
 
 
 ```
+
+Doesn't look like it's converged? Run script below to continue the run
 
 ```{r}
 
