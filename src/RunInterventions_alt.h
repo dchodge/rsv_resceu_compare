@@ -1113,8 +1113,8 @@ public:
              // p_vulp = 0; p_vulc = sum_wcb; p_vuln = sum_wcb; p_vulpv = 0; p_vulcv = sum_wcb_v; p_vulnv = sum_wcb_v;
               p_vulp = 0; p_vulc = 0; p_vuln = 0; p_vulpv = 0; p_vulcv = 0; p_vulnv = 0;
 
-              muBp = 0;    muBc = dailyBirthRate*(cov_c);   muBn = dailyBirthRate*(1-cov_c);
-              muBpv = 0;  muBcv = dailyBirthRate*(cov_c);  muBnv = dailyBirthRate*(1-cov_c);
+              muBp = 0;    muBc = dailyBirthRate * (cov_c);   muBn = dailyBirthRate * (1 - cov_c);
+              muBpv = 0;  muBcv = dailyBirthRate * (cov_c);  muBnv = dailyBirthRate * (1 - cov_c);
               xi_bp = 1;    xi_bc = 1;   xi_bn = 1;
               xi_bpv = 1;   xi_bcv = xi_boost;  xi_bnv = 1;
           }
@@ -1153,7 +1153,7 @@ public:
                   }
                   else if (s == 4)
                   {   kp = 4*sg;       u = (cov_c);       In = I_temp_c_v; mu = muBcv*(1-vac_cal(t1, 0)); mu_mat = muBcv*vac_cal(t1, 0); p_vul = p_vulcv;  xi_b = xi_bcv;
-
+   
                   }
                   else
                   {   kp = 5*sg;       u = (1-cov_c);     In = I_temp_n_v; mu = muBnv; mu_mat = 0; p_vul = p_vulnv;  xi_b = xi_bnv;
@@ -1433,7 +1433,7 @@ public:
                   dxdt[p+20] = x[p+19]*ga3 + x[p+18]*ga3*rho - x[p+20]*om         - (x[p+20])*ej1 + PS[20]*ej*rp*u - x[o+20]*0 - x[o+20]*(cpo) + cLo*S3 + cMa*S3;
                   
                   // Vaccination groups
-                  dxdt[p+21] = x_tot*cpo - lossP - x[p+21]*ej1 + PS[21]*ej*u*rp;  //pal
+                  dxdt[p+21] = x_tot*cpo - lossP - x[p+21]*ej1 + PS[21]*ej*u*rp;  // pal or mabs
                   dxdt[p+22] = x_tot_1*cMo - lossMS0 - x[p+22]*ej1 + PS[22]*ej*u*rp; // + x[(a-1)*ag + s*sg + r*rg +22]*ej;
                   dxdt[p+23] = x_tot_2*cMo - lossMS1 - x[p+23]*ej1 + PS[23]*ej*u*rp; // + x[(a-1)*ag +
 

@@ -157,6 +157,7 @@ make_vac_program_info_custom_P3 <- function(seed) {
 #vac_program_info_custom <- make_vac_program_info_custom_P8(1)
 #vac_cal <- create_calendar(vac_program_info_custom, "week", 0.6)
 
+
 make_vac_program_info_custom_P4 <- function(seed) {
   list(
       mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 21 + 1, eff_inf = 0.39, eff_mat = lav_eff[seed], cov = 0.70)
@@ -180,6 +181,14 @@ make_vac_program_info_custom_P7 <- function(seed) {
       mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 52, eff_inf = mat_eff[seed], eff_mat = lav_eff[seed], cov = 0.67)
     )
 }
+
+vac_program_info_custom <- make_vac_program_info_custom_P5(1)
+vac_cal <- create_calendar(vac_program_info_custom, "week", 0.67)
+cal <- get_cal(vac_cal)
+dose <- get_dose(vac_cal)
+
+dose$mat_LR
+cal$mat_LR
 
 none_mat <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_none_mat, vac_par_info, 0.0, output1[[1]][[1]], 0, 0.03, 1)
 outputBase_mat <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_Base, vac_par_info, 0.67, output1[[1]][[1]], 200000, 0.03, 1)
