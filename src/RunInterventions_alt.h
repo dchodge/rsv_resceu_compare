@@ -645,6 +645,7 @@ public:
                     initialStates.push_back(0);     //Rec
                     initialStates.push_back(0);     //Rec
                     initialStates.push_back(0);     //Rec
+                    initialStates.push_back(0);     
 
                 }
             }
@@ -658,12 +659,12 @@ public:
     {
       if (this->dayNoAfterBurn == 0){
         for (int a = 0; a < this->A; a++) {
-            x0[455*a + 72*6 + 1] = 0;
-            x0[455*a + 72*6 + 2] = 0;
-            x0[455*a + 72*6 + 3] = 0;
-            x0[455*a + 72*6 + 4] = 0;
+            x0[473*a + 75*6 + 1] = 0;
+            x0[473*a + 75*6 + 2] = 0;
+            x0[473*a + 75*6 + 3] = 0;
+            x0[473*a + 75*6 + 4] = 0;
             for (int j = 0; j < 9; j++) {
-                x0[455*a + 72*6 + 8 + j] = 0.0; //Incidence at t_d = 0;
+                x0[473*a + 75*6 + 8 + j] = 0.0; //Incidence at t_d = 0;
             }
         }
       }
@@ -673,23 +674,23 @@ public:
                 for (int j = 0; j < 9; j++)
                 {
                     if (epFlag)
-                      sampleWeeklyIncidence(this->weekNo, 9*a + j) = x0[455*a + 72*6 + 8 + j]*this->ep_t[a];
+                      sampleWeeklyIncidence(this->weekNo, 9*a + j) = x0[473*a + 75*6 + 8 + j]*this->ep_t[a];
                     else
-                      sampleWeeklyIncidence(this->weekNo, 9*a + j) = x0[455*a + 72*6 + 8 + j]; //Incidence at t_d = 7;
+                      sampleWeeklyIncidence(this->weekNo, 9*a + j) = x0[473*a + 75*6 + 8 + j]; //Incidence at t_d = 7;
                   
-                    x0[455*a + 72*6 + 8 + j] = 0.0;
+                    x0[473*a + 75*6 + 8 + j] = 0.0;
                 }
             }
             for (int a = 0; a < this->A; a++) {
-                no_doses(this->weekNo, 0) += (x0[455*a + 72*6 + 1]); // pal
-                no_doses(this->weekNo, 1) += (x0[455*a + 72*6 + 2]); // mab
-                no_doses(this->weekNo, 2) += (x0[455*a + 72*6 + 3]); // lav
-                no_doses(this->weekNo, 3) += (x0[455*a + 72*6 + 4]); // mat
+                no_doses(this->weekNo, 0) += (x0[473*a + 75*6 + 1]); // pal
+                no_doses(this->weekNo, 1) += (x0[473*a + 75*6 + 2]); // mab
+                no_doses(this->weekNo, 2) += (x0[473*a + 75*6 + 3]); // lav
+                no_doses(this->weekNo, 3) += (x0[473*a + 75*6 + 4]); // mat
                 
-                x0[455*a + 72*6 + 1] = 0;
-                x0[455*a + 72*6 + 2] = 0;
-                x0[455*a + 72*6 + 3] = 0;
-                x0[455*a + 72*6 + 4] = 0;
+                x0[473*a + 75*6 + 1] = 0;
+                x0[473*a + 75*6 + 2] = 0;
+                x0[473*a + 75*6 + 3] = 0;
+                x0[473*a + 75*6 + 4] = 0;
             }
 
             this->weekNo++;
@@ -701,12 +702,12 @@ public:
     {
       if (this->dayNoAfterBurn == 0){
         for (int a = 0; a < this->A; a++) {
-            x0[455*a + 72*6 + 1] = 0;
-            x0[455*a + 72*6 + 2] = 0;
-            x0[455*a + 72*6 + 3] = 0;
-            x0[455*a + 72*6 + 4] = 0;
+            x0[473*a + 75*6 + 1] = 0;
+            x0[473*a + 75*6 + 2] = 0;
+            x0[473*a + 75*6 + 3] = 0;
+            x0[473*a + 75*6 + 4] = 0;
             for (int j = 0; j < 9; j++) {
-                x0[455*a + 72*6 + 8 + j] = 0.0; //Incidence at t_d = 0;
+                x0[473*a + 75*6 + 8 + j] = 0.0; //Incidence at t_d = 0;
             }
         }
       }
@@ -716,23 +717,23 @@ public:
                 for (int j = 0; j < 9; j++)
                 {
                     if (epFlag)
-                      sampleMonthlyIncidence(this->monthNo, 9*a + j) = x0[455*a + 72*6 + 8 + j]*this->ep_t[a];
+                      sampleMonthlyIncidence(this->monthNo, 9*a + j) = x0[473*a + 75*6 + 8 + j]*this->ep_t[a];
                     else
-                      sampleMonthlyIncidence(this->monthNo, 9*a + j) = x0[455*a + 72*6 + 8 + j]; //Incidence at t_d = 7;
+                      sampleMonthlyIncidence(this->monthNo, 9*a + j) = x0[473*a + 75*6 + 8 + j]; //Incidence at t_d = 7;
                   
-                    x0[455*a + 72*6 + 8 + j] = 0.0;
+                    x0[473*a + 75*6 + 8 + j] = 0.0;
                 }
             }
             for (int a = 0; a < this->A; a++) {
-                no_doses(this->monthNo, 0 + 4 * (a)) = (x0[455*a + 72*6 + 1]); // pal
-                no_doses(this->monthNo, 1 + 4 * (a)) = (x0[455*a + 72*6 + 2]); // mab
-                no_doses(this->monthNo, 2 + 4 * (a)) = (x0[455*a + 72*6 + 3]); // lav
-                no_doses(this->monthNo, 3 + 4 * (a)) = (x0[455*a + 72*6 + 4]); // mat
+                no_doses(this->monthNo, 0 + 4 * (a)) = (x0[473*a + 75*6 + 1]); // pal
+                no_doses(this->monthNo, 1 + 4 * (a)) = (x0[473*a + 75*6 + 2]); // mab
+                no_doses(this->monthNo, 2 + 4 * (a)) = (x0[473*a + 75*6 + 3]); // lav
+                no_doses(this->monthNo, 3 + 4 * (a)) = (x0[473*a + 75*6 + 4]); // mat
                 
-                x0[455*a + 72*6 + 1] = 0;
-                x0[455*a + 72*6 + 2] = 0;
-                x0[455*a + 72*6 + 3] = 0;
-                x0[455*a + 72*6 + 4] = 0;
+                x0[473*a + 75*6 + 1] = 0;
+                x0[473*a + 75*6 + 2] = 0;
+                x0[473*a + 75*6 + 3] = 0;
+                x0[473*a + 75*6 + 4] = 0;
             }
             this->monthNo++;
         }
@@ -860,7 +861,7 @@ public:
         prop_nv = VectorXd::Zero(A);  prop_cv = VectorXd::Zero(A);  prop_pv = VectorXd::Zero(A);
         prop_empty = VectorXd::Zero(A);
       
-        PS = VectorXd::Zero(A - 1);
+        PS = VectorXd::Zero(25);
 
         // This needs sorting out somehow
         cal_pal_t = vac_calendar["pal"];
@@ -889,9 +890,9 @@ public:
   
   void operator() (  vector< double >  &x , vector< double >  &dxdt , const double  t )
   {
-      int ag = 455;
-      int sg = 72;
-      int rg = 24;
+      int ag = 473;
+      int sg = 75;
+      int rg = 25;
       /*/////////////*/
       /* CALENDARS /*/
       /*/////////////*/
@@ -931,14 +932,14 @@ public:
           double tot_temp_n = 0, tot_temp_c = 0, tot_temp_p = 0, tot_temp_nv = 0, tot_temp_cv = 0, tot_temp_pv = 0;
           double tot_temp_vhr = 0, tot_temp_vhrv = 0, tot_temp_hr = 0, tot_temp_hrv = 0, tot_temp_lr = 0, tot_temp_lrv = 0;
 
-          for (int j = 0; j < 24; j++){
+          for (int j = 0; j < 25; j++){
               for (int r = 0; r < 3; r++){
                   tot_temp_p +=  x[a*ag+0*sg+r*rg+j];        tot_temp_c += x[a*ag+1*sg+r*rg+j];            tot_temp_n += x[a*ag+2*sg+r*rg+j];
                   tot_temp_pv += x[a*ag+3*sg+r*rg+j];       tot_temp_cv += x[a*ag+4*sg+r*rg+j];           tot_temp_nv += x[a*ag+5*sg+r*rg+j];
               }
           }
           
-          for (int j = 0; j < 24; j++){
+          for (int j = 0; j < 25; j++){
               for (int s = 0; s < 3; s++){
                   tot_temp_vhr +=  x[a*ag+s*sg+0*rg+j];        tot_temp_hr += x[a*ag+s*sg+1*rg+j];            tot_temp_lr += x[a*ag+s*sg+2*rg+j];
                   tot_temp_vhrv += x[a*ag+(s+3)*sg+0*rg+j];       tot_temp_hrv += x[a*ag+(s+3)*sg+1*rg+j];           tot_temp_lrv += x[a*ag+(s+3)*sg+2*rg+j];
@@ -1103,7 +1104,7 @@ public:
 
           double ej1  = eta[a+1];
           double ej   = eta[a];
-          double lossP, lossMS0, lossMS1;
+          double lossP, lossMS0, lossMS1, lossMat;
           
           // Birth rate into each social group
        //   Rcpp::Rcout << "Birth rate into each social group: " << a << std::endl;
@@ -1183,8 +1184,6 @@ public:
               
               for (int r = 0; r < 3; r++)
               {
-               //   Rcpp::Rcout << "Risk groups parameters: " << r << std::endl;
-
                   double PST = 0;
                   x_tot = x_tot_1 = x_tot_2 = 0;
                   if (r==0){
@@ -1199,7 +1198,6 @@ public:
                   
                   if (r == 2)
                   {
-                   //   Rcpp::Rcout << "Place where r == 2." << std::endl;
                       if (a==18 || a==19 || a==20)
                       {
                           if (a==18)
@@ -1233,12 +1231,12 @@ public:
                           for (int i = 0; i < 21; i++)
                               PS[i] = (x[pj+0*sg+0*rg+i]+x[pj+0*sg+1*rg+i]+x[pj+0*sg+2*rg+i] + x[pj+1*sg+0*rg+i]+x[pj+1*sg+1*rg+i]+x[pj+1*sg+2*rg+i] + x[pj+2*sg+0*rg+i] + x[pj+2*sg+1*rg+i]+x[pj+2*sg+2*rg+i]);
                           
-                          for (int i = 21; i < 24; i++)
+                          for (int i = 21; i < 25; i++)
                               PS[i] = x[pj+0*sg+r*rg+i] + x[pj+1*sg+r*rg+i] + x[pj+2*sg+r*rg+i];
                       }
                       else
                       {
-                          for (int i = 0; i < 24; i++)
+                          for (int i = 0; i < 25; i++)
                               PS[i] = (x[pj+0*sg+0*rg+i]+x[pj+0*sg+1*rg+i]+x[pj+0*sg+2*rg+i] + x[pj+1*sg+0*rg+i]+x[pj+1*sg+1*rg+i]+x[pj+1*sg+2*rg+i] + x[pj+2*sg+0*rg+i] + x[pj+2*sg+1*rg+i]+x[pj+2*sg+2*rg+i]);
                       }
                   }
@@ -1265,15 +1263,13 @@ public:
                           for (int i = 0; i < 21; i++)
                               PS[i] = x[pj+3*sg+0*rg+i] + x[pj+3*sg+1*rg+i] + x[pj+3*sg+2*rg+i] + x[pj+4*sg+0*rg+i] + x[pj+4*sg+1*rg+i] + x[pj+4*sg+2*rg+i] + x[pj+5*sg+0*rg+i] + x[pj+5*sg+1*rg+i] + x[pj+5*sg+2*rg+i];
                           
-                          for (int i = 21; i < 24; i++)
+                          for (int i = 21; i < 25; i++)
                               PS[i] = x[pj+3*sg+r*rg+i] + x[pj+4*sg+r*rg+i] + x[pj+5*sg+r*rg+i];
  
                       }
                       else
                       {
-                     //     Rcpp::Rcout << "Place where a >= 12." << std::endl;
-
-                          for (int i = 0; i < 24; i++)
+                          for (int i = 0; i < 25; i++)
                               PS[i] = x[pj+3*sg+0*rg+i] + x[pj+3*sg+1*rg+i] + x[pj+3*sg+2*rg+i] + x[pj+4*sg+0*rg+i] + x[pj+4*sg+1*rg+i] + x[pj+4*sg+2*rg+i] + x[pj+5*sg+0*rg+i] + x[pj+5*sg+1*rg+i] + x[pj+5*sg+2*rg+i];
                       }
                   }
@@ -1288,7 +1284,6 @@ public:
                   
                   if (s < 3)
                   {
-
                       cpmu = 0; cpmu_dose = 0;
                       cpo = 0; cpo_dose = 0;
                       cMmu = 0; cMmu_dose = 0;
@@ -1297,7 +1292,6 @@ public:
                       cMa = 0; cMa_dose = 0;
                       SN = 1;
                       lossMS1 = lossMS0 = lossP = 0;
-
                   }
                   else
                   {
@@ -1305,7 +1299,8 @@ public:
                       lossP = x[a*ag + s*sg + r*rg + 21]*(1.0/60.0);
                       lossMS0 = x[a*ag + s*sg + r*rg + 22]*(om_mab);
                       lossMS1 = x[a*ag + s*sg + r*rg + 23]*(om_mab);
-                      
+                      lossMat = x[a*ag + s*sg + r*rg + 24]*(xi*xi_b);
+
                       cpmu = 0; cpmu_dose = 0;
                       cpo = 0; cpo_dose = 0;
                       cMmu = 0; cMmu_dose = 0;
@@ -1406,9 +1401,9 @@ public:
                   protectLAV += cLo_dose*x_tot;
                   protectmat += cMa_dose*x_tot;
 
-                  dxdt[p+0] = (1.0-p_vul)*mu*rp + mu_mat*rp - x[p+0]*xi*xi_b - (x[p+0])*ej1 + PS[0]*ej*rp*u - x[o+0]*(cMo) - x[o+0]*(cpo);
+                  dxdt[p+0] = (1.0-p_vul)*mu*rp - x[p+0]*xi - (x[p+0])*ej1 + PS[0]*ej*rp*u - x[o+0]*(cMo) - x[o+0]*(cpo);
                   
-                  dxdt[p+1] = p_vul*mu*rp  + x[p+0]*xi*xi_b + lossP + lossMS0 - x[p+1]*In*beta - (x[p+1])*ej1 + PS[1]*ej*rp*u - x[o+1]*(cMo) - x[o+1]*(cpo) - cLo*S0 - cMa*S0;
+                  dxdt[p+1] = p_vul*mu*rp  + x[p+0]*xi + lossP + lossMS0 + lossMat - x[p+1]*In*beta - (x[p+1])*ej1 + PS[1]*ej*rp*u - x[o+1]*(cMo) - x[o+1]*(cpo) - cLo*S0 - cMa*S0;
                   dxdt[p+2] = x[p+1]*In*beta                 - x[p+2]*si          - (x[p+2])*ej1 + PS[2]*ej*rp*u - x[o+2]*(cMo) - x[o+2]*(cpo);
                   dxdt[p+3] = x[p+2]*si*pA[a]                - x[p+3]*ga0*rho     - (x[p+3])*ej1 + PS[3]*ej*rp*u - x[o+3]*(cMo) - x[o+3]*(cpo);
                   dxdt[p+4] = x[p+2]*si*(1.0-pA[a])          - x[p+4]*ga0         - (x[p+4])*ej1 + PS[4]*ej*rp*u - x[o+4]*(cMo) - x[o+4]*(cpo);
@@ -1434,8 +1429,9 @@ public:
                   
                   // Vaccination groups
                   dxdt[p+21] = x_tot*cpo - lossP - x[p+21]*ej1 + PS[21]*ej*u*rp;  // pal or mabs
-                  dxdt[p+22] = x_tot_1*cMo - lossMS0 - x[p+22]*ej1 + PS[22]*ej*u*rp; // + x[(a-1)*ag + s*sg + r*rg +22]*ej;
-                  dxdt[p+23] = x_tot_2*cMo - lossMS1 - x[p+23]*ej1 + PS[23]*ej*u*rp; // + x[(a-1)*ag +
+                  dxdt[p+22] = x_tot_1*cMo - lossMS0 - x[p+22]*ej1 + PS[22]*ej*u*rp; // mabs exposure group 1
+                  dxdt[p+23] = x_tot_2*cMo - lossMS1 - x[p+23]*ej1 + PS[23]*ej*u*rp; // mabs exposure group 1
+                  dxdt[p+24] = mu_mat*rp - lossMat - x[p+24]*ej1 + PS[24]*ej*u*rp; // mat
 
                  // dxdt[p+21] = mu*rp*cpmu + cpo*PST     - x[p+21]*ej1 + x[p+21]*ej1;
                  // dxdt[p+22] = mu*rp*cMmu + PST2*ej*u*rp*cMo - loss    - x[p+22]*ej1 + PS[22]*ej*u*rp*(1-cpo)*(1-cMo) ; // + x[(a-1)*ag + s*sg + r*rg +22]*ej;

@@ -104,17 +104,33 @@ make_vac_program_info_custom_None <- function(seed) {
 
 outputNone <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.0, output1[[1]][[1]], 0, 0.03, 1)
 cal_risks(outputNone, resceudata)
+outputNone <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.0, output1[[1]][[1]], 0, 0.03, 1)
 
-outputNoneHigh <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.0, output1[[1]][[1]], 0, 0.03, 1.5)
-outputNoneLow - run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.0, output1[[1]][[1]], 0, 0.03, 0.5)
+# outputNone
+outputNone_67 <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.67, output1[[1]][[1]], 0, 0.03, 1)
+outputNone_44 <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.44, output1[[1]][[1]], 0, 0.03, 1)
+outputNone_03 <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.03, output1[[1]][[1]], 0, 0.03, 1)
+outputNone_70 <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.70, output1[[1]][[1]], 0, 0.03, 1)
 
+outputNoneHigh <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.67, output1[[1]][[1]], 0, 0.03, 1.5)
+outputNoneLow <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_None, vac_par_info, 0.67, output1[[1]][[1]], 0, 0.03, 0.5)
 
 save(outputNone, file = here::here("outputs", "burden_full", "none.RData") )
+save(outputNone_67, file = here::here("outputs", "burden_full", "none_67.RData") )
+save(outputNone_44, file = here::here("outputs", "burden_full", "none_44.RData") )
+save(outputNone_03, file = here::here("outputs", "burden_full", "none_03.RData") )
+save(outputNone_70, file = here::here("outputs", "burden_full", "none_70.RData") )
+
 save(outputNoneLow, file = here::here("outputs", "burden_full", "none_low.RData") )
 save(outputNoneHigh, file = here::here("outputs", "burden_full", "none_high.RData") )
 
 none_final <- save_outputs(outputNone, "no_inter")
 save_excel(none_final, "burden_no_inter")
+
+none_final_67 <- save_outputs(outputNone_67, "no_inter_67")
+none_final_44 <- save_outputs(outputNone_44, "no_inter_44")
+none_final_03 <- save_outputs(outputNone_03, "no_inter_03")
+none_final_70 <- save_outputs(outputNone_70, "no_inter_70")
 
 none_final_low <- save_outputs(outputNoneLow, "no_inter_low")
 none_final_high <- save_outputs(outputNoneHigh, "no_inter_high")
@@ -181,14 +197,6 @@ make_vac_program_info_custom_P7 <- function(seed) {
       mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 52, eff_inf = mat_eff[seed], eff_mat = lav_eff[seed], cov = 0.67)
     )
 }
-
-vac_program_info_custom <- make_vac_program_info_custom_P5(1)
-vac_cal <- create_calendar(vac_program_info_custom, "week", 0.67)
-cal <- get_cal(vac_cal)
-dose <- get_dose(vac_cal)
-
-dose$mat_LR
-cal$mat_LR
 
 none_mat <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_none_mat, vac_par_info, 0.0, output1[[1]][[1]], 0, 0.03, 1)
 outputBase_mat <- run_sample_custom(seeds[1:100], make_vac_program_info_custom_Base, vac_par_info, 0.67, output1[[1]][[1]], 200000, 0.03, 1)
@@ -260,7 +268,7 @@ make_vac_program_info_custom_P3 <- function(seed) {
     )
 }
 
-# Ex.2a Long-acting monoclonal antibodies at HR, LR, and VHR, given seasonally (Oct to April) at birh ONLY with 98% coverage (cannot include manual duration of protection) PLUS
+# Ex.2a Long-acting monoclonal antibodies at HR, LR, dand VHR, given seasonally (Oct to April) at birh ONLY with 98% coverage (cannot include manual duration of protection) PLUS
 # Ex.2b Maternal vaccination given seasonally (July to Jan to prevent infections in Oct to April) with 70% coverage. Average duration of protection is 150 days.
 # VHR, HR and LR at birth during the winter
 #vac_program_info_custom <- make_vac_program_info_custom_P8(1)
@@ -399,14 +407,14 @@ P8_mat_short <- save_outputs(outputP8_mat, "P8_case_mat_short")
 P9_mat_short <- save_outputs(outputP9_mat, "P9_case_mat_short")
 P10_mat_short <- save_outputs(outputP10_mat, "P10_case_mat_short")
 
-calc_impact(none_final, base_mat_short, "base_mat")
-calc_impact(none_final, P1_mat_short, "P1_mat")
-calc_impact(none_final, P3_mat_short, "P3_mat")
-calc_impact(none_final, P4_mat_short, "P4_mat")
-calc_impact(none_final, P5_mat_short, "P5_mat")
-calc_impact(none_final, P6_mat_short, "P6_mat")
-calc_impact(none_final, P7_mat_short, "P7_mat")
-calc_impact(none_final, P8_mat_short, "P8_mat")
+calc_impact(none_final_67, base_mat_short, "base_mat")
+calc_impact(none_final_44, P1_mat_short, "P1_mat")
+calc_impact(none_final_03, P3_mat_short, "P3_mat")
+calc_impact(none_final_70, P4_mat_short, "P4_mat")
+calc_impact(none_final_67, P5_mat_short, "P5_mat")
+calc_impact(none_final_67, P6_mat_short, "P6_mat")
+calc_impact(none_final_67, P7_mat_short, "P7_mat")
+calc_impact(none_final_67, P8_mat_short, "P8_mat")
 calc_impact(none_final_high, P9_mat_short, "P9_mat")
 calc_impact(none_final_low, P10_mat_short, "P10_mat")
 

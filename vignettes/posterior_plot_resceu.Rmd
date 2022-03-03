@@ -66,6 +66,34 @@ all_pars <- colnames(output1$mcmc[[1]])
 color_scheme_set("red")
 mcmc_post <- output1$mcmc %>% map(~.x[start:end, ] )
 gelman.diag(output1$mcmc)
+```
+
+```{r}
+
+mcmc_post[[1]][, "alpha_i"] %>% quantile(c(0.5, 0.025, 0.975))
+mcmc_post[[1]][, "phi"] %>% quantile(c(0.5, 0.025, 0.975))
+mcmc_post[[1]][, "qp"] %>% quantile(c(0.5, 0.025, 0.975))
+mcmc_post[[1]][, "qc"] %>% quantile(c(0.5, 0.025, 0.975))
+mcmc_post[[1]][, "b1"] %>% quantile(c(0.5, 0.025, 0.975))
+mcmc_post[[1]][, "psi"] %>% quantile(c(0.5, 0.025, 0.975))
+
+mcmc_post[[1]][, "ep1"] %>% quantile(c(0.5, 0.025, 0.975))  %>% round(4) # 0 - 3 months
+mcmc_post[[1]][, "ep2"] %>% quantile(c(0.5, 0.025, 0.975))  %>% round(4) # 4 - 6 months
+mcmc_post[[1]][, "ep3"] %>% quantile(c(0.5, 0.025, 0.975))  %>% round(4) # 7 - 11 months
+mcmc_post[[1]][, "ep4"] %>% quantile(c(0.5, 0.025, 0.975))  %>% round(4) # 1 year
+mcmc_post[[1]][, "ep5"] %>% quantile(c(0.5, 0.025, 0.975))  %>% round(4) # 2-4 year
+mcmc_post[[1]][, "ep6"] %>% quantile(c(0.5, 0.025, 0.975))  %>% round(5) # 5-54 year
+mcmc_post[[1]][, "ep7"] %>% quantile(c(0.5, 0.025, 0.975))  %>% round(5) # 55-64 year
+mcmc_post[[1]][, "ep8"] %>% quantile(c(0.5, 0.025, 0.975))  %>% round(4) # 65-74 year
+mcmc_post[[1]][, "ep9"] %>% quantile(c(0.5, 0.025, 0.975))  %>% round(4) # 75+ year
+
+```
+
+
+
+```{r}
+
+
 
 
 transmission_param <- c("alpha_i", "phi", "qp", "qc", "psi", "b1", "l1", "l2" )

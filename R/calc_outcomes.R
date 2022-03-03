@@ -282,7 +282,7 @@ get_costP <- function(doses_w) {
     costP
 }
 
-get_costIndirect <- function(symp, sec, hosp, picu, doses_w, seed) {
+get_costIndirect <- function(symp, pri, sec, hosp, picu, doses_w, seed) {
     set.seed(seed)
 
     cost_outpatient_day <- 139
@@ -299,6 +299,7 @@ get_costIndirect <- function(symp, sec, hosp, picu, doses_w, seed) {
     days_off_hosp <- 6.92
 
     for (a in 1:16) {
+        costIn[a] <- costIn[a] + pri[a] * cost_outpatient_day
         costIn[a] <- costIn[a] + sec[a] * cost_outpatient_day
         costIn[a] <- costIn[a] + hosp[a] * 189 * 0.19
         costIn[a] <- costIn[a] + hosp[a] * hosp_days * cost_hosp_day
@@ -306,6 +307,7 @@ get_costIndirect <- function(symp, sec, hosp, picu, doses_w, seed) {
         costIn[a] <- costIn[a] + picu[a] * picu_days * cost_picu_day
     }
     for (a in 17:25) {
+        costIn[a] <- costIn[a] + pri[a] * cost_outpatient_day
         costIn[a] <- costIn[a] + sec[a] * cost_outpatient_day
         costIn[a] <- costIn[a] + hosp[a] * 189 * 0.19
         costIn[a] <- costIn[a] + hosp[a] * hosp_days * cost_hosp_day
@@ -327,7 +329,7 @@ get_Costs <- function(symp, pri, sec, hosp, picu, death, cost_imp, doses_w, seed
     cost_intervention <- costA + costP
     cost_intervention[1] <- cost_intervention[1] + cost_intervention[19] + cost_intervention[20] + cost_intervention[21] # add maternal costs to first age group
     cost_intervention[19] <- cost_intervention[20] <- cost_intervention[21] <- 0
-    cost_indirect <- get_costIndirect(symp, sec, hosp, picu, doses_w, seed)
+    cost_indirect <- get_costIndirect(symp, pri, sec, hosp, picu, doses_w, seed)
     cost_total <- cost_direct + cost_intervention + cost_indirect
 
     list(direct = cost_direct,
