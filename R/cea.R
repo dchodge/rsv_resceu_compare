@@ -85,3 +85,34 @@ save_excel <- function(none_final, filename) {
   write.csv(qaly, here::here("outputs", filename, "qaly.csv"))
 
 }
+
+
+calc_impact_split <-  function(base, programme, filename) {
+    age_groups <- c("0-3mo", "4-6mo", "7–11mo", "12–23mo", "24-59mo", "0-11mo", "0-59mo")
+
+    # Cases averted
+    asymp_cases_avert <- (base$cases$asymp$under5[,-1] %>% rowSums) - (programme$cases$asymp$under5[,-1] %>% rowSums)
+    symp_nhc_cases_avert <- (base$cases$symp_nhc$under5[,-1] %>% rowSums) - (programme$cases$symp_nhc$under5[,-1] %>% rowSums)
+
+
+     # Incremental QALY gained (undiscounted)
+    qaly_undist_total <- base$QALY_s$under5$undiscounted_total - programme$QALY_s$under5$undiscounted_total
+    qaly_undist_hc <- base$QALY_s$under5$undiscounted_cases_hc - programme$QALY_s$under5$undiscounted_cases_hc
+    qaly_undist_nhc <- base$QALY_s$under5$undiscounted_cases_nhc - programme$QALY_s$under5$undiscounted_cases_nhc
+
+    qaly_dist_total <- base$QALY_s$under5$discounted_total - programme$QALY_s$under5$discounted_total
+    qaly_dist_hc <- base$QALY_s$under5$discounted_cases_hc - programme$QALY_s$under5$discounted_cases_hc
+    qaly_dist_nhc <- base$QALY_s$under5$discounted_cases_nhc - programme$QALY_s$under5$discounted_cases_nhc
+
+    output_df <- bind_cols(age_groups,
+        asymp_cases_avert, symp_nhc_cases_avert,
+        qaly_undist_total, qaly_undist_hc, qaly_undist_nhc,
+        qaly_dist_total, qaly_dist_hc, qaly_dist_nhc ) %>% as.data.frame
+    colnames(output_df)  <- c(
+        "age_group", "asymp_averted", "symp_nhc_averted",
+        "incr_QALY_undis_total", "incr_QALY_undis_hc", "incr_QALY_undis_nhc", 
+        "incr_QALY_dis_total", "incr_QALY_dis_hc", "incr_QALY_dis_nhc"
+        )
+
+    write.csv(output_df, file = here::here("outputs", "qaly_split", paste0(filename, ".csv") ))
+}

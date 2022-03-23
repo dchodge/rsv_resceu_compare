@@ -41,18 +41,6 @@ load(here("outputs", "burden_full", "Base_mat.RData")) # outputBase_mat
 # Check everything matches the outputs in the excel file
 
 ```{r}
-outcomes_tot <- get_summarise_outputs(outputNone, sens_list)
-outcomes_tot_b1 <- get_summarise_outputs(outputBase_mab, sens_list)
-com <- outcomes_tot - outcomes_tot_b1
-get_QALY_sens(com, sens_list)
-get_QALY_sens(outcomes_tot_b1, sens_list)
-
-get_cost_indirect(outcomes_tot, sens_list)
-
-
-get_cost_treat(com, sens_list)
-get_cost_indirect(com, sens_list)
-get_cost_inter(outputBase_mab$vac_cal, sens_list, TRUE)
 
 get_summarise_outputs <- function(output, sens_list) {
     outcomes_str_long <- c("symptomatic_cases", "pri_cases", "sec_cases", "hosp_cases", "picu_cases", "death_cases")
@@ -156,9 +144,6 @@ make_row <- function(base, SX_lower, SX_upper) {
 Sensitivity analysis 
 
 ```{r}
-
-get_qaly_cost(outputNone, sens_list, base = TRUE)
-get_qaly_cost(outputBase_mab, sens_list, base = FALSE)
 
 sens_list_default <- list(  
     # Rates

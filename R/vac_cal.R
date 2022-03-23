@@ -405,6 +405,55 @@ get_output_format_full <- function(outcomes_age_month, outcomes_name) {
 }
 
 qaly_output <- function(QALY) {
+
+  QALY_mean <- QALY %>%
+    group_by(age_group, type, metric) %>%
+    summarise(value = mean(value, na.rm = TRUE))
+    # under 5s
+  df_u5_qaly <- bind_rows(
+    QALY_mean %>% filter(age_group %in% 1:3) %>% group_by(type, metric) %>% summarise(value = sum(value)) %>% mutate(age_group = "0-3m"),
+    QALY_mean %>% filter(age_group %in% 4:6) %>% group_by(type, metric) %>% summarise(value = sum(value)) %>% mutate(age_group = "4-6m"),
+    QALY_mean %>% filter(age_group %in% 7:12) %>% group_by(type, metric) %>% summarise(value = sum(value)) %>% mutate(age_group = "7-11m"),
+    QALY_mean %>% filter(age_group %in% 13) %>% group_by(type, metric) %>% summarise(value = sum(value)) %>% mutate(age_group = "12-23m"),
+    QALY_mean %>% filter(age_group %in% 14:16) %>% group_by(type, metric) %>% summarise(value = sum(value)) %>% mutate(age_group = "24-59m"),
+    QALY_mean %>% filter(age_group %in% 1:12) %>% group_by(type, metric) %>% summarise(value = sum(value)) %>% mutate(age_group = "0-11m"),
+    QALY_mean %>% filter(age_group %in% 1:16) %>% group_by(type, metric) %>% summarise(value = sum(value)) %>% mutate(age_group = "0-59m")
+  )
+  df_u5_qaly_wide <- df_u5_qaly %>% unite("metric", type, metric) %>% pivot_wider(everything(), names_from = metric, values_from = value)
+
+  df_u5_qaly <- bind_cols(df_u5_qaly_wide[1], df_u5_qaly_wide[2]  + df_u5_qaly_wide[3], df_u5_qaly_wide[4], 
+    df_u5_qaly_wide[5], df_u5_qaly_wide[6] + df_u5_qaly_wide[7], df_u5_qaly_wide[8], df_u5_qaly_wide[9])
+
+  # over 5s
+  df_o5_qaly <- bind_rows(
+    bind_rows(
+      filter(QALY_mean, age_group %in% 17:22),
+      mutate(filter(QALY_mean, age_group == 23), value = value / 2)
+    ) %>% group_by(type, metric) %>% summarise(value = sum(value)) %>% mutate(age_group = "5-59yrs"),
+    QALY_mean %>% filter(age_group %in% 23) %>% group_by(type, metric) %>% summarise(value = value / 2) %>% mutate(age_group = "60-64yrs"),
+    QALY_mean %>% filter(age_group %in% 24) %>% group_by(type, metric) %>% summarise(value = value / 2) %>% mutate(age_group = "65-69yrs"),
+    QALY_mean %>% filter(age_group %in% 24) %>% group_by(type, metric) %>% summarise(value = value / 2) %>% mutate(age_group = "70-74yrs"),
+
+    QALY_mean %>% filter(age_group %in% 25) %>% group_by(type, metric) %>% summarise(value = value / 3) %>% mutate(age_group = "75-79yrs"),
+    QALY_mean %>% filter(age_group %in% 25) %>% group_by(type, metric) %>% summarise(value = value / 3) %>% mutate(age_group = "80-84yrs"),
+    QALY_mean %>% filter(age_group %in% 25) %>% group_by(type, metric) %>% summarise(value = value / 3) %>% mutate(age_group = "85+yrs"),
+    bind_rows(
+      mutate(filter(QALY_mean, age_group == 23), value = value / 2),
+      filter(QALY_mean, age_group %in% 24:25)
+    ) %>% group_by(type, metric) %>% summarise(value = sum(value)) %>% mutate(age_group = "60+yrs")
+  )
+    df_o5_qaly_wide <- df_o5_qaly %>% unite("metric", type, metric) %>% pivot_wider(everything(), names_from = metric, values_from = value)
+    df_o5_qaly <- bind_cols(df_o5_qaly_wide[1], df_o5_qaly_wide[2] + df_o5_qaly_wide[3], df_o5_qaly_wide[4],
+        df_o5_qaly_wide[5], df_o5_qaly_wide[6] + df_o5_qaly_wide[7], df_o5_qaly_wide[8], df_o5_qaly_wide[9])
+
+  list(
+    under5 = df_u5_qaly,
+    over5 = df_o5_qaly
+  )
+}
+
+
+qaly_output_split <- function(QALY) {
   QALY_mean <- QALY %>%
     group_by(age_group, type, metric) %>%
     summarise(value = mean(value, na.rm = TRUE))
@@ -486,7 +535,6 @@ cost_output <- function(cost) {
 
 
 save_outputs <- function(sample_output, filename, excel_format = TRUE) {
-
     if (excel_format) {
         cases_outputs <- list(
             asymp = get_output_format(sample_output$outcomes_month_age, "asymptomtic_cases"),
@@ -499,10 +547,12 @@ save_outputs <- function(sample_output, filename, excel_format = TRUE) {
         )
 
         QALY_outputs <- sample_output$QALY %>% qaly_output
+        QALY_outputs_split <- sample_output$QALY %>% qaly_output_split
         cost_outputs <- sample_output$cost %>% cost_output
 
         output_final <- list(cases = cases_outputs,
                 QALY = QALY_outputs,
+                QALY_s = QALY_outputs_split,
                 cost = cost_outputs
         )
 

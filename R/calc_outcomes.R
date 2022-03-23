@@ -180,7 +180,8 @@ get_QALY <- function(symp, pri, sec, hosp, death, seed) {
     death_QALY[24] <- rnorm(1, 13.908392, 13.908392 * 0.1)
     death_QALY[25] <- rnorm(1, 7.112405,  7.112405 * 0.1)
 
-    tot_Q_c <- rep(0, 25)
+    tot_Q_nhc <- rep(0, 25)
+    tot_Q_hc <- rep(0, 25)
     tot_Q_d <- rep(0, 25)
 
     for (a in 1:16) { # <5 years
@@ -188,8 +189,8 @@ get_QALY <- function(symp, pri, sec, hosp, death, seed) {
         hseek_QALY[a] <- 0.003823
        # nhseek_QALY[a] <- rgamma(1, 1.6578, scale = 0.0018241) # non-healthcare seeking QALY loss (3.024 × 10−3)
         #hseek_QALY[a] <- rgamma(1, 1.7927, scale = 0.00213254) # healthcare seeking QALY loss (3.823 × 10−3)
-        tot_Q_c[a] <-  tot_Q_c[a] + (symp[a] - pri[a] - sec[a] - hosp[a]) * nhseek_QALY[a]
-        tot_Q_c[a] <- tot_Q_c[a] + (pri[a] + sec[a] + hosp[a]) * hseek_QALY[a]
+        tot_Q_nhc[a] <-  tot_Q_nhc[a] + (symp[a] - pri[a] - sec[a] - hosp[a]) * nhseek_QALY[a]
+        tot_Q_hc[a] <- tot_Q_hc[a] + (pri[a] + sec[a] + hosp[a]) * hseek_QALY[a]
         tot_Q_d[a] <- tot_Q_d[a] + death[a] * death_QALY[a];
     }
     for (a in 17:25) { # >5 years
@@ -197,14 +198,16 @@ get_QALY <- function(symp, pri, sec, hosp, death, seed) {
         hseek_QALY[a] <- 0.001950
        # nhseek_QALY[a] <- rgamma(1, 1.36973, scale = 0.0011265)  # non-healthcare seeking QALY loss (1.543 × 10−3)
        # hseek_QALY[a] <- rlnorm(1, -6.23993, 0.933905) # healthcare seeking QALY loss (1.950 × 10−3)
-        tot_Q_c[a] <- tot_Q_c[a] + (symp[a] - pri[a] - sec[a] - hosp[a]) * nhseek_QALY[a]
-        tot_Q_c[a] <- tot_Q_c[a] + (pri[a] + sec[a] + hosp[a]) * hseek_QALY[a]
+        tot_Q_nhc[a] <- tot_Q_nhc[a] + (symp[a] - pri[a] - sec[a] - hosp[a]) * nhseek_QALY[a]
+        tot_Q_hc[a] <- tot_Q_hc[a] + (pri[a] + sec[a] + hosp[a]) * hseek_QALY[a]
         tot_Q_d[a] <- tot_Q_d[a] + death[a] * death_QALY[a];
     }
 
-    list(qaly_cases = tot_Q_c,
+    list(
+        qaly_cases_nhc = tot_Q_nhc,
+        qaly_cases_hc = tot_Q_hc,
         qaly_death = tot_Q_d,
-        qaly_total = tot_Q_c + tot_Q_d
+        qaly_total = tot_Q_nhc + tot_Q_hc + tot_Q_d
     )
 }
 
@@ -394,8 +397,8 @@ get_outcomes <- function(outputs, posterior, cost_imp, discount_rate, seed, dise
 
         undiscount_qaly_tm <- get_QALY(symp$incidence, pri$incidence, sec$incidence * disease_mult, hosp$incidence * disease_mult, death$incidence, seed)
         discount_qaly_tm <- undiscount_qaly_tm %>% map(~.x * exp(-(t_m - 1) * discount_rate / 12.0))
-        undiscount_qaly <- ((1:3 %>% map(~undiscount_qaly[[.x]] + undiscount_qaly_tm[[.x]])) %>% setNames(c("qaly_cases", "qaly_death", "qaly_total")))
-        discount_qaly <- ((1:3 %>% map(~discount_qaly[[.x]] + discount_qaly_tm[[.x]])) %>% setNames(c("qaly_cases", "qaly_death", "qaly_total")))
+        undiscount_qaly <- ((1:4 %>% map(~undiscount_qaly[[.x]] + undiscount_qaly_tm[[.x]])) %>% setNames(c("qaly_cases_nhc", "qaly_cases_hc", "qaly_death", "qaly_total")))
+        discount_qaly <- ((1:4 %>% map(~discount_qaly[[.x]] + discount_qaly_tm[[.x]])) %>% setNames(c("qaly_cases_nhc", "qaly_cases_hc", "qaly_death", "qaly_total")))
         
         undiscount_cost_tm <- get_Costs(symp$incidence, pri$incidence, sec$incidence * disease_mult, hosp$incidence * disease_mult, picu$incidence * disease_mult, death$incidence, cost_imp, doses[t_m, ], seed)
         discount_cost_tm <- undiscount_cost_tm %>% map(~.x * exp(-(t_m - 1) * discount_rate / 12.0))
@@ -409,11 +412,11 @@ get_outcomes <- function(outputs, posterior, cost_imp, discount_rate, seed, dise
     #cost_imp needs to be added
     QALY <- data.frame(
         seed = seed,
-        age_group = rep(1:25, 6),
-        type = c(rep("undiscounted", 75), rep("discounted", 75)),
-        metric = c(rep("cases", 25), rep("deaths", 25), rep("total", 25), rep("cases", 25), rep("deaths", 25), rep("total", 25)),
-        value = c(undiscount_qaly$qaly_cases, undiscount_qaly$qaly_death, undiscount_qaly$qaly_total,
-            discount_qaly$qaly_cases, discount_qaly$qaly_death, discount_qaly$qaly_total)
+        age_group = rep(1:25, 8),
+        type = c(rep("undiscounted", 100), rep("discounted", 100)),
+        metric = c(rep("cases_nhc", 25), rep("cases_hc", 25), rep("deaths", 25), rep("total", 25), rep("cases_nhc", 25), rep("cases_hc", 25), rep("deaths", 25), rep("total", 25)),
+        value = c(undiscount_qaly$qaly_cases_nhc, undiscount_qaly$qaly_cases_hc, undiscount_qaly$qaly_death, undiscount_qaly$qaly_total,
+            discount_qaly$qaly_cases_nhc, discount_qaly$qaly_cases_hc, discount_qaly$qaly_death, discount_qaly$qaly_total)
     )
     
     cost <- data.frame(
@@ -430,6 +433,5 @@ get_outcomes <- function(outputs, posterior, cost_imp, discount_rate, seed, dise
         cost = cost,
         outcomes_age_month = outcomes_age_month
     )
- 
 }
 

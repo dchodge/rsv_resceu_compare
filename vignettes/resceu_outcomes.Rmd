@@ -365,6 +365,9 @@ P8_mab_short <- save_outputs(outputP8_mab, "P8_case_mab_short")
 P9_mab_short <- save_outputs(outputP9_mab, "P9_case_mab_short")
 P10_mab_short <- save_outputs(outputP10_mab, "P10_case_mab_short")
 
+base <- none_final
+programme <- base_mab_short
+
 calc_impact(none_final, base_mab_short, "base_mab")
 calc_impact(none_final, P1_mab_short, "P1_mab")
 calc_impact(none_final, P2_mab_short, "P2_mab")
@@ -417,5 +420,20 @@ calc_impact(none_final_67, P7_mat_short, "P7_mat")
 calc_impact(none_final_67, P8_mat_short, "P8_mat")
 calc_impact(none_final_high, P9_mat_short, "P9_mat")
 calc_impact(none_final_low, P10_mat_short, "P10_mat")
+
+```
+
+# QALY Split
+```{r}
+## 
+base_qaly_split <- none_final$QALY_s$under5
+write.csv(base_qaly_split, file = here::here("outputs", "qaly_split", "base.csv"))
+
+calc_impact_split(none_final, base_mab_short, "base_mab")
+calc_impact_split(none_final, P1_mab_short, "P1_mab")
+calc_impact_split(none_final, P2_mab_short, "P2_mab")
+
+calc_impact_split(none_final_67, base_mat_short, "base_mab")
+calc_impact_split(none_final_44, P1_mat_short, "P1_mab")
 
 ```
