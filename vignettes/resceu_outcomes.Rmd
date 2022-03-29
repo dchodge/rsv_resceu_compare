@@ -157,13 +157,13 @@ make_vac_program_info_custom_Base <- function(seed) {
 
 make_vac_program_info_custom_P1 <- function(seed) {
   list(
-      mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 21 + 1, eff_inf = 0.39, eff_mat = lav_eff[seed], cov = 0.44)
+      mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 31 + 1, eff_inf = 0.39, eff_mat = lav_eff[seed], cov = 0.44)
     )
 }
 
 make_vac_program_info_custom_P3 <- function(seed) {
   list(
-      mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 21 + 1, eff_inf = 0.39, eff_mat = lav_eff[seed], cov = 0.30)
+      mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 31 + 1, eff_inf = 0.39, eff_mat = lav_eff[seed], cov = 0.30)
     )
 }
 
@@ -176,7 +176,7 @@ make_vac_program_info_custom_P3 <- function(seed) {
 
 make_vac_program_info_custom_P4 <- function(seed) {
   list(
-      mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 21 + 1, eff_inf = 0.39, eff_mat = lav_eff[seed], cov = 0.70)
+      mat =  list(id = TRUE, age_id = ind_parents, t_start = 1, t_end = 31 + 1, eff_inf = 0.39, eff_mat = lav_eff[seed], cov = 0.70)
     )
 }
 
@@ -425,6 +425,7 @@ calc_impact(none_final_low, P10_mat_short, "P10_mat")
 
 # QALY Split
 ```{r}
+
 ## 
 base_qaly_split <- none_final$QALY_s$under5
 write.csv(base_qaly_split, file = here::here("outputs", "qaly_split", "base.csv"))
